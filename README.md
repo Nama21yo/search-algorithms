@@ -1,4 +1,4 @@
-# Pac-Man AI
+# Search Algorithms
 
 This is a small Pac-Man game implemented in Python using Pygame with multiple AI search algorithms for controlling the player. The project includes implementations of: BFS, DFS, Uniform Cost Search (UCS / Dijkstra), A\* search, Minimax, and Alpha-Beta pruning.
 
@@ -17,17 +17,17 @@ This is a small Pac-Man game implemented in Python using Pygame with multiple AI
 ## Installation
 
 1. Create and activate a virtual environment (recommended):
-
+```bash
    python -m venv .venv
    source .venv/bin/activate
+```
 
 2. Install dependencies:
-
+```bash
    python -m pip install -U pip
    python -m pip install -r requirements.txt # optional if you add a requirements file
    python -m pip install pygame
-   Pac-Man AI
-   ==========
+```
 
 This is a small Pac-Man game implemented in Python using Pygame with multiple AI search algorithms for controlling the player. The project includes implementations of: BFS, DFS, Uniform Cost Search (UCS / Dijkstra), A\* search, Minimax, and Alpha-Beta pruning.
 
