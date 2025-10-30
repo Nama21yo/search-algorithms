@@ -1,6 +1,11 @@
 # Search Algorithms
 
-This is a small Pac-Man game implemented in Python using Pygame with multiple AI search algorithms for controlling the player. The project includes implementations of: BFS, DFS, Uniform Cost Search (UCS / Dijkstra), A\* search, Minimax, and Alpha-Beta pruning.
+This is a small Pac-Man game implemented in Python using Pygame with multiple AI search algorithms for controlling the player. The project includes implementations of: BFS, DFS, Uniform Cost Search (UCS / Dijkstra), A\* search, Minimax with Alpha-Beta pruning.
+## Demo
+
+
+https://github.com/user-attachments/assets/e52e7330-7da5-4d96-b035-936c5727c840
+
 
 ## Features
 
