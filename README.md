@@ -1,18 +1,31 @@
-# Search Algorithms
+#  Search Algorithms
 
-This is a small Pac-Man game implemented in Python using Pygame with multiple AI search algorithms for controlling the player. The project includes implementations of: BFS, DFS, Uniform Cost Search (UCS / Dijkstra), A\* search, Minimax with Alpha-Beta pruning.
+This is a small Pac-Man-like game implemented in Python using Pygame, featuring multiple AI search algorithms for controlling the player. The project includes implementations of the following search algorithms: BFS, DFS, Uniform Cost Search (UCS / Dijkstra), A* search, and Minimax with Alpha-Beta pruning.
+
 ## Demo
 
+https://www.awesomescreenshot.com/video/45837715?key=c804c4fec99a257e316bfa20d8212b63
+
+Alternatively, you can view the demo here:  
 
 https://github.com/user-attachments/assets/e52e7330-7da5-4d96-b035-936c5727c840
 
 
+
 ## Features
 
-- Play the classic Pac-Man-like game with dots and power pellets.
-- Switch between AI modes (BFS, DFS, UCS, A\*) to see pathfinding in action.
-- Minimax and Alpha-Beta modes provide simple adversarial decision-making against ghosts.
-- Visualize the AI path and visited nodes (toggleable).
+- **Classic Pac-Man gameplay**: Collect dots and power pellets while avoiding ghosts.
+- **Multiple AI modes**: Switch between BFS, DFS, UCS, and A* to see different pathfinding strategies in action.
+- **Minimax with Alpha-Beta pruning**: Simple adversarial decision-making for avoiding ghosts.
+- **AI Visualization**: Toggle the display of AI paths and visited nodes to better understand the search algorithms.
+
+## Installation
+
+To run this project locally, make sure you have Python 3.x installed and follow these steps:
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/yourusername/pacman-ai.git
 
 ## Requirements
 
