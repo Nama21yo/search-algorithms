@@ -344,25 +344,33 @@ class PathfindingAgent:
         dots = board.get_all_dots()
         if not dots:
             return None
-        
-        # Convert player position to grid coordinates
-        player_grid = (player_pos[1] // TILE_HEIGHT, player_pos[0] // TILE_WIDTH)
-        
-        # Find nearest dot
+        # Convert player position (top-left x,y) to center and grid coordinates
+        center_x = player_pos[0] + TILE_WIDTH // 2
+        center_y = player_pos[1] + TILE_HEIGHT // 2
+        player_grid = (center_y // TILE_HEIGHT, center_x // TILE_WIDTH)
+
+        # Find nearest dot (grid coordinates)
         nearest_dot = min(dots, key=lambda d: manhattan_distance(player_grid, d))
         return nearest_dot
     
-    def get_next_move(self, player_pos, ghost_positions, board):
+    def get_next_move(self, player_pos, ghost_positions, board, goal=None):
         """
         Get next move based on selected algorithm
         Returns: direction (0-3) or None
         """
-        # Convert pixel position to grid position
-        player_grid = (player_pos[1] // TILE_HEIGHT, player_pos[0] // TILE_WIDTH)
+        # player_pos is pixel top-left (x, y). Convert to pixel center then to grid position
+        center_x = player_pos[0] + TILE_WIDTH // 2
+        center_y = player_pos[1] + TILE_HEIGHT // 2
+        player_grid = (center_y // TILE_HEIGHT, center_x // TILE_WIDTH)
         
         # For minimax and alphabeta, use adversarial search
         if self.algorithm_mode in [MODE_MINIMAX, MODE_ALPHABETA]:
-            ghost_grids = [(g[1] // TILE_HEIGHT, g[0] // TILE_WIDTH) for g in ghost_positions]
+            # Convert ghost pixel top-left positions to grid positions using centers
+            ghost_grids = []
+            for g in ghost_positions:
+                gx = g[0] + TILE_WIDTH // 2
+                gy = g[1] + TILE_HEIGHT // 2
+                ghost_grids.append((gy // TILE_HEIGHT, gx // TILE_WIDTH))
             
             if self.algorithm_mode == MODE_MINIMAX:
                 next_pos = Minimax.get_best_move(player_grid, ghost_grids, board)
@@ -372,14 +380,18 @@ class PathfindingAgent:
             # Convert position to direction
             return self._position_to_direction(player_grid, next_pos)
         
-        # For other algorithms, find path to nearest dot
+        # For pathfinding algorithms, use provided goal or find nearest dot
         if not self.current_path or self.path_index >= len(self.current_path):
-            goal = self.find_nearest_dot((player_pos[0], player_pos[1]), board)
+            # Use provided goal or find nearest dot
+            if goal is None:
+                goal = self.find_nearest_dot((player_pos[0], player_pos[1]), board)
             
             if not goal:
                 return None
             
             # Find path using selected algorithm
+            print(f"Finding path from {player_grid} to {goal} using {self.algorithm_mode}")
+            
             if self.algorithm_mode == MODE_BFS:
                 self.current_path, self.visited_nodes = BFS.search(player_grid, goal, board)
             elif self.algorithm_mode == MODE_DFS:
@@ -389,21 +401,69 @@ class PathfindingAgent:
             elif self.algorithm_mode == MODE_ASTAR:
                 self.current_path, self.visited_nodes = AStar.search(player_grid, goal, board)
             
+            print(f"Path found with {len(self.current_path)} steps, visited {len(self.visited_nodes)} nodes")
             self.path_index = 0
         
+        # If we have a path, convert the next grid node into target pixel center
         if self.current_path and self.path_index < len(self.current_path):
-            next_pos = self.current_path[self.path_index]
-            
-            # Check if we've reached this position
-            if manhattan_distance(player_grid, next_pos) <= 1:
+            next_grid = self.current_path[self.path_index]
+
+            # grid -> pixel center
+            target_row, target_col = next_grid
+            target_x = target_col * TILE_WIDTH + TILE_WIDTH // 2
+            target_y = target_row * TILE_HEIGHT + TILE_HEIGHT // 2
+
+            # Player center pixel (we converted earlier)
+            px = center_x
+            py = center_y
+
+            # Distance to target center
+            dx = target_x - px
+            dy = target_y - py
+            dist = abs(dx) + abs(dy)
+
+            # If close enough to target center, advance to next node
+            # Use threshold as half the smaller tile dimension
+            threshold = min(TILE_WIDTH, TILE_HEIGHT) // 2
+            if abs(dx) <= max(2, threshold // 4) and abs(dy) <= max(2, threshold // 4):
                 self.path_index += 1
-                if self.path_index < len(self.current_path):
-                    next_pos = self.current_path[self.path_index]
-                else:
+                if self.path_index >= len(self.current_path):
                     return None
-            
-            # Convert position to direction
-            return self._position_to_direction(player_grid, next_pos)
+                next_grid = self.current_path[self.path_index]
+                target_row, target_col = next_grid
+                target_x = target_col * TILE_WIDTH + TILE_WIDTH // 2
+                target_y = target_row * TILE_HEIGHT + TILE_HEIGHT // 2
+                dx = target_x - px
+                dy = target_y - py
+
+            # Choose primary direction by larger absolute delta
+            # Map desired primary move to grid delta and verify it's walkable
+            def _dir_walkable(desired_dir):
+                dr = 0
+                dc = 0
+                if desired_dir == DIR_RIGHT:
+                    dc = 1
+                elif desired_dir == DIR_LEFT:
+                    dc = -1
+                elif desired_dir == DIR_UP:
+                    dr = -1
+                elif desired_dir == DIR_DOWN:
+                    dr = 1
+
+                check_r = player_grid[0] + dr
+                check_c = player_grid[1] + dc
+                return board.is_walkable(check_r, check_c)
+
+            if abs(dx) > abs(dy):
+                # Horizontal move
+                desired = DIR_RIGHT if dx > 0 else DIR_LEFT
+                return desired if _dir_walkable(desired) else None
+            elif abs(dy) > 0:
+                # Vertical move
+                desired = DIR_DOWN if dy > 0 else DIR_UP
+                return desired if _dir_walkable(desired) else None
+
+        return None
         
         return None
     

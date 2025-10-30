@@ -1,9 +1,8 @@
 """
 Pac-Man AI Game with Search Algorithms
-Main game loop and orchestration
+Main game loop with proper pathfinding visualization
 """
 import pygame
-import copy
 from config import *
 from board import Board
 from entities import Player, Ghost
@@ -11,7 +10,7 @@ from algorithms import PathfindingAgent
 
 
 class PacManGame:
-    """Main game class"""
+    """Main game class with search algorithm visualization"""
     
     def __init__(self):
         pygame.init()
@@ -44,10 +43,12 @@ class PacManGame:
         self.counter = 0
         self.flicker = False
         
-        # AI mode
+        # AI mode and visualization
         self.ai_mode = MODE_MANUAL
         self.show_path = True
-        self.show_visited = False
+        self.show_visited = True
+        self.goal_position = None  # Goal for pathfinding
+        self.path_complete = False
         
         self._initialize_entities()
     
@@ -62,9 +63,8 @@ class PacManGame:
             # Create simple circles if images not found
             for i in range(4):
                 surface = pygame.Surface((45, 45), pygame.SRCALPHA)
-                mouth_angle = i * 15
                 pygame.draw.circle(surface, YELLOW, (22, 22), 20)
-                return [surface] * 4
+                images.append(surface)
         return images
     
     def _load_ghost_images(self):
@@ -113,6 +113,23 @@ class PacManGame:
                   GHOST_SPEED, self.ghost_images['orange'], DIR_UP, 3, "Clyde")
         ]
     
+    def set_new_goal(self):
+        """Set a new goal position for pathfinding"""
+        # Find nearest dot as goal
+        dots = self.board.get_all_dots()
+        if dots:
+            player_grid = self.player.get_grid_position()
+            # Get a dot that's far away for better visualization
+            dots.sort(key=lambda d: abs(d[0] - player_grid[0]) + abs(d[1] - player_grid[1]))
+            # Pick one of the farther dots (top 20%)
+            goal_index = min(len(dots) - 1, max(0, len(dots) - len(dots) // 5))
+            self.goal_position = dots[goal_index]
+        else:
+            # No dots left, use a random position
+            self.goal_position = self.board.get_random_walkable_position()
+        
+        self.path_complete = False
+    
     def reset_game(self):
         """Reset game to initial state"""
         self.board.reset()
@@ -130,6 +147,8 @@ class PacManGame:
         self.game_over = False
         self.game_won = False
         self.agent.current_path = []
+        self.goal_position = None
+        self.path_complete = False
     
     def reset_positions(self):
         """Reset positions after death"""
@@ -142,6 +161,8 @@ class PacManGame:
         self.eaten_ghosts = [False, False, False, False]
         self.startup_counter = 0
         self.agent.current_path = []
+        self.goal_position = None
+        self.path_complete = False
     
     def check_collisions(self):
         """Check for dot and power pellet collisions"""
@@ -261,10 +282,7 @@ class PacManGame:
             
             # Move ghost
             if self.moving:
-                if not ghost.dead and not ghost.in_box:
-                    ghost.move_towards_target()
-                else:
-                    ghost.move_towards_target()
+                ghost.move_towards_target()
     
     def draw_ui(self):
         """Draw UI elements"""
@@ -287,15 +305,22 @@ class PacManGame:
         self.screen.blit(mode_text, (10, 10))
         
         # Instructions
-        if self.ai_mode == MODE_MANUAL:
-            inst_text = self.small_font.render(
-                'Arrow Keys: Move | 1-6: AI Mode | V: Toggle Visited | P: Toggle Path', 
-                True, WHITE)
-        else:
-            inst_text = self.small_font.render(
-                'Space: Pause AI | 1-6: Change Mode | V: Toggle Visited | P: Toggle Path', 
-                True, WHITE)
+        inst_text = self.small_font.render(
+            'Arrow Keys: Move | 1-7: AI | V: Visited | P: Path | G: New Goal | R: Restart', 
+            True, WHITE)
         self.screen.blit(inst_text, (10, 35))
+        
+        # Show visited nodes count
+        if hasattr(self.agent, 'visited_nodes') and len(self.agent.visited_nodes) > 0:
+            visited_text = self.small_font.render(
+                f'Nodes Explored: {len(self.agent.visited_nodes)}', True, YELLOW)
+            self.screen.blit(visited_text, (10, 60))
+        
+        # Show path length
+        if self.agent.current_path:
+            path_text = self.small_font.render(
+                f'Path Length: {len(self.agent.current_path)}', True, YELLOW)
+            self.screen.blit(path_text, (10, 85))
         
         # Game over/won messages
         if self.game_over:
@@ -311,29 +336,49 @@ class PacManGame:
             self.screen.blit(text, (180, 300))
     
     def draw_ai_visualization(self):
-        """Draw AI pathfinding visualization"""
+        """Draw AI pathfinding visualization with start and goal"""
         if self.ai_mode == MODE_MANUAL:
             return
         
-        # Draw visited nodes
+        # Draw goal position (red circle)
+        if self.goal_position:
+            goal_x = int(self.goal_position[1] * TILE_WIDTH + TILE_WIDTH // 2)
+            goal_y = int(self.goal_position[0] * TILE_HEIGHT + TILE_HEIGHT // 2)
+            pygame.draw.circle(self.screen, RED, (goal_x, goal_y), 12, 3)
+            pygame.draw.circle(self.screen, (255, 100, 100), (goal_x, goal_y), 8)
+        
+        # Draw visited nodes (blue circles)
         if self.show_visited and hasattr(self.agent, 'visited_nodes'):
             for node in self.agent.visited_nodes:
-                x = node[1] * TILE_WIDTH + TILE_WIDTH // 2
-                y = node[0] * TILE_HEIGHT + TILE_HEIGHT // 2
-                pygame.draw.circle(self.screen, (100, 100, 255, 128), (x, y), 5)
+                x = int(node[1] * TILE_WIDTH + TILE_WIDTH // 2)
+                y = int(node[0] * TILE_HEIGHT + TILE_HEIGHT // 2)
+                pygame.draw.circle(self.screen, (100, 150, 255), (x, y), 4)
         
-        # Draw current path
+        # Draw current path (green line)
         if self.show_path and self.agent.current_path:
+            # Draw path as connected lines
             for i in range(len(self.agent.current_path) - 1):
                 pos1 = self.agent.current_path[i]
                 pos2 = self.agent.current_path[i + 1]
                 
-                x1 = pos1[1] * TILE_WIDTH + TILE_WIDTH // 2
-                y1 = pos1[0] * TILE_HEIGHT + TILE_HEIGHT // 2
-                x2 = pos2[1] * TILE_WIDTH + TILE_WIDTH // 2
-                y2 = pos2[0] * TILE_HEIGHT + TILE_HEIGHT // 2
+                x1 = int(pos1[1] * TILE_WIDTH + TILE_WIDTH // 2)
+                y1 = int(pos1[0] * TILE_HEIGHT + TILE_HEIGHT // 2)
+                x2 = int(pos2[1] * TILE_WIDTH + TILE_WIDTH // 2)
+                y2 = int(pos2[0] * TILE_HEIGHT + TILE_HEIGHT // 2)
                 
                 pygame.draw.line(self.screen, (0, 255, 0), (x1, y1), (x2, y2), 3)
+            
+            # Draw circles on path nodes
+            for pos in self.agent.current_path:
+                x = int(pos[1] * TILE_WIDTH + TILE_WIDTH // 2)
+                y = int(pos[0] * TILE_HEIGHT + TILE_HEIGHT // 2)
+                pygame.draw.circle(self.screen, (0, 200, 0), (x, y), 5)
+        
+        # Draw start position (green circle)
+        player_grid = self.player.get_grid_position()
+        start_x = int(player_grid[1] * TILE_WIDTH + TILE_WIDTH // 2)
+        start_y = int(player_grid[0] * TILE_HEIGHT + TILE_HEIGHT // 2)
+        pygame.draw.circle(self.screen, (0, 255, 0), (start_x, start_y), 10, 3)
     
     def handle_input(self, event):
         """Handle keyboard input"""
@@ -353,24 +398,36 @@ class PacManGame:
             if event.key == pygame.K_1:
                 self.ai_mode = MODE_MANUAL
                 self.agent.set_algorithm(MODE_MANUAL)
+                self.goal_position = None
             elif event.key == pygame.K_2:
                 self.ai_mode = MODE_BFS
                 self.agent.set_algorithm(MODE_BFS)
+                self.set_new_goal()
             elif event.key == pygame.K_3:
                 self.ai_mode = MODE_DFS
                 self.agent.set_algorithm(MODE_DFS)
+                self.set_new_goal()
             elif event.key == pygame.K_4:
                 self.ai_mode = MODE_UCS
                 self.agent.set_algorithm(MODE_UCS)
+                self.set_new_goal()
             elif event.key == pygame.K_5:
                 self.ai_mode = MODE_ASTAR
                 self.agent.set_algorithm(MODE_ASTAR)
+                self.set_new_goal()
             elif event.key == pygame.K_6:
                 self.ai_mode = MODE_MINIMAX
                 self.agent.set_algorithm(MODE_MINIMAX)
+                self.goal_position = None
             elif event.key == pygame.K_7:
                 self.ai_mode = MODE_ALPHABETA
                 self.agent.set_algorithm(MODE_ALPHABETA)
+                self.goal_position = None
+            
+            # Set new goal
+            elif event.key == pygame.K_g:
+                if self.ai_mode not in [MODE_MANUAL, MODE_MINIMAX, MODE_ALPHABETA]:
+                    self.set_new_goal()
             
             # Visualization toggles
             elif event.key == pygame.K_v:
@@ -379,7 +436,7 @@ class PacManGame:
                 self.show_path = not self.show_path
             
             # Restart
-            elif event.key == pygame.K_r and (self.game_over or self.game_won):
+            elif event.key == pygame.K_r:
                 self.reset_game()
         
         elif event.type == pygame.KEYUP:
@@ -450,9 +507,19 @@ class PacManGame:
         if self.moving:
             # Get AI move or use manual control
             if self.ai_mode != MODE_MANUAL:
+                # Set goal if not set
+                if self.goal_position is None and self.ai_mode not in [MODE_MINIMAX, MODE_ALPHABETA]:
+                    self.set_new_goal()
+                
+                # Check if reached goal
+                player_grid = self.player.get_grid_position()
+                if self.goal_position and player_grid == self.goal_position:
+                    self.path_complete = True
+                    self.set_new_goal()  # Set new goal when reached
+                
                 ghost_positions = [(g.x, g.y) for g in self.ghosts if not g.dead]
                 ai_direction = self.agent.get_next_move(
-                    (self.player.x, self.player.y), ghost_positions, self.board)
+                    (self.player.x, self.player.y), ghost_positions, self.board, self.goal_position)
                 
                 if ai_direction is not None:
                     self.player.direction_command = ai_direction

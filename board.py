@@ -1,11 +1,15 @@
 """
 Board module - Contains board layout and rendering logic
+Complete implementation with all board management functions
 """
 import pygame
 import math
+import copy
 from config import *
 
 # Original board layout
+# 0 = empty black rectangle, 1 = dot, 2 = big dot (power pellet), 3 = vertical line,
+# 4 = horizontal line, 5 = top right, 6 = top left, 7 = bot left, 8 = bot right, 9 = gate
 BOARDS = [
     [6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5],
     [3, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 3],
@@ -47,68 +51,81 @@ class Board:
     """Manages the game board and rendering"""
     
     def __init__(self):
+        self.level = None
+        self.original_board = copy.deepcopy(BOARDS)
         self.reset()
         
     def reset(self):
         """Reset board to initial state"""
-        self.level = [row[:] for row in BOARDS]
+        self.level = copy.deepcopy(self.original_board)
         
     def draw(self, screen, flicker, color=BLUE):
-        """Draw the board on screen"""
+        """Draw the board on screen with all maze elements"""
         for i in range(len(self.level)):
             for j in range(len(self.level[i])):
                 x = j * TILE_WIDTH + (0.5 * TILE_WIDTH)
                 y = i * TILE_HEIGHT + (0.5 * TILE_HEIGHT)
                 
                 if self.level[i][j] == TILE_DOT:
-                    pygame.draw.circle(screen, WHITE, (x, y), 4)
+                    # Draw small dot
+                    pygame.draw.circle(screen, WHITE, (int(x), int(y)), 4)
                     
                 elif self.level[i][j] == TILE_POWER_PELLET and not flicker:
-                    pygame.draw.circle(screen, WHITE, (x, y), 10)
+                    # Draw power pellet (flickers)
+                    pygame.draw.circle(screen, WHITE, (int(x), int(y)), 10)
                     
                 elif self.level[i][j] == TILE_VERTICAL:
-                    pygame.draw.line(screen, color, (x, i * TILE_HEIGHT),
-                                   (x, i * TILE_HEIGHT + TILE_HEIGHT), 3)
+                    # Draw vertical wall
+                    pygame.draw.line(screen, color, (int(x), int(i * TILE_HEIGHT)),
+                                   (int(x), int(i * TILE_HEIGHT + TILE_HEIGHT)), 3)
                     
                 elif self.level[i][j] == TILE_HORIZONTAL:
-                    pygame.draw.line(screen, color, (j * TILE_WIDTH, y),
-                                   (j * TILE_WIDTH + TILE_WIDTH, y), 3)
+                    # Draw horizontal wall
+                    pygame.draw.line(screen, color, (int(j * TILE_WIDTH), int(y)),
+                                   (int(j * TILE_WIDTH + TILE_WIDTH), int(y)), 3)
                     
                 elif self.level[i][j] == TILE_TOP_RIGHT:
+                    # Draw top-right corner
                     pygame.draw.arc(screen, color, 
-                                  [(j * TILE_WIDTH - (TILE_WIDTH * 0.4)) - 2, y, 
-                                   TILE_WIDTH, TILE_HEIGHT],
+                                  [int(j * TILE_WIDTH - (TILE_WIDTH * 0.4) - 2), int(y), 
+                                   int(TILE_WIDTH), int(TILE_HEIGHT)],
                                   0, math.pi / 2, 3)
                     
                 elif self.level[i][j] == TILE_TOP_LEFT:
+                    # Draw top-left corner
                     pygame.draw.arc(screen, color,
-                                  [(j * TILE_WIDTH + (TILE_WIDTH * 0.5)), y, 
-                                   TILE_WIDTH, TILE_HEIGHT],
+                                  [int(j * TILE_WIDTH + (TILE_WIDTH * 0.5)), int(y), 
+                                   int(TILE_WIDTH), int(TILE_HEIGHT)],
                                   math.pi / 2, math.pi, 3)
                     
                 elif self.level[i][j] == TILE_BOTTOM_LEFT:
+                    # Draw bottom-left corner
                     pygame.draw.arc(screen, color, 
-                                  [(j * TILE_WIDTH + (TILE_WIDTH * 0.5)), 
-                                   i * TILE_HEIGHT - (0.4 * TILE_HEIGHT), 
-                                   TILE_WIDTH, TILE_HEIGHT],
+                                  [int(j * TILE_WIDTH + (TILE_WIDTH * 0.5)), 
+                                   int(i * TILE_HEIGHT - (0.4 * TILE_HEIGHT)), 
+                                   int(TILE_WIDTH), int(TILE_HEIGHT)],
                                   math.pi, 3 * math.pi / 2, 3)
                     
                 elif self.level[i][j] == TILE_BOTTOM_RIGHT:
+                    # Draw bottom-right corner
                     pygame.draw.arc(screen, color,
-                                  [(j * TILE_WIDTH - (TILE_WIDTH * 0.4)) - 2, 
-                                   i * TILE_HEIGHT - (0.4 * TILE_HEIGHT), 
-                                   TILE_WIDTH, TILE_HEIGHT],
+                                  [int(j * TILE_WIDTH - (TILE_WIDTH * 0.4) - 2), 
+                                   int(i * TILE_HEIGHT - (0.4 * TILE_HEIGHT)), 
+                                   int(TILE_WIDTH), int(TILE_HEIGHT)],
                                   3 * math.pi / 2, 2 * math.pi, 3)
                     
                 elif self.level[i][j] == TILE_GATE:
-                    pygame.draw.line(screen, WHITE, (j * TILE_WIDTH, y),
-                                   (j * TILE_WIDTH + TILE_WIDTH, y), 3)
+                    # Draw gate (for ghost house)
+                    pygame.draw.line(screen, WHITE, (int(j * TILE_WIDTH), int(y)),
+                                   (int(j * TILE_WIDTH + TILE_WIDTH), int(y)), 3)
     
     def is_walkable(self, row, col):
         """Check if a position is walkable (not a wall)"""
         if row < 0 or row >= len(self.level) or col < 0 or col >= len(self.level[0]):
             return False
-        return self.level[row][col] < 3 or self.level[row][col] == TILE_GATE
+        tile = self.level[row][col]
+        # Walkable if: empty, dot, power pellet, or gate
+        return tile < 3 or tile == TILE_GATE
     
     def get_tile(self, row, col):
         """Get tile type at position"""
@@ -136,3 +153,15 @@ class Board:
                 if self.level[i][j] in [TILE_DOT, TILE_POWER_PELLET]:
                     dots.append((i, j))
         return dots
+    
+    def get_random_walkable_position(self):
+        """Get a random walkable position for goal setting"""
+        import random
+        walkable_positions = []
+        for i in range(len(self.level)):
+            for j in range(len(self.level[i])):
+                if self.is_walkable(i, j) and not (350 < j * TILE_WIDTH < 550 and 370 < i * TILE_HEIGHT < 480):
+                    walkable_positions.append((i, j))
+        if walkable_positions:
+            return random.choice(walkable_positions)
+        return (15, 15)  # Default fallback
