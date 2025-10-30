@@ -306,7 +306,7 @@ class PacManGame:
         
         # Instructions
         inst_text = self.small_font.render(
-            'Arrow Keys: Move | 1-7: AI | V: Visited | P: Path | G: New Goal | R: Restart', 
+            'Arrow Keys: Move | 1-6: AI | V: Visited | P: Path | G: New Goal | R: Restart', 
             True, WHITE)
         self.screen.blit(inst_text, (10, 35))
         
@@ -419,14 +419,10 @@ class PacManGame:
                 self.ai_mode = MODE_MINIMAX
                 self.agent.set_algorithm(MODE_MINIMAX)
                 self.goal_position = None
-            elif event.key == pygame.K_7:
-                self.ai_mode = MODE_ALPHABETA
-                self.agent.set_algorithm(MODE_ALPHABETA)
-                self.goal_position = None
             
             # Set new goal
             elif event.key == pygame.K_g:
-                if self.ai_mode not in [MODE_MANUAL, MODE_MINIMAX, MODE_ALPHABETA]:
+                if self.ai_mode not in [MODE_MANUAL, MODE_MINIMAX]:
                     self.set_new_goal()
             
             # Visualization toggles
@@ -508,7 +504,7 @@ class PacManGame:
             # Get AI move or use manual control
             if self.ai_mode != MODE_MANUAL:
                 # Set goal if not set
-                if self.goal_position is None and self.ai_mode not in [MODE_MINIMAX, MODE_ALPHABETA]:
+                if self.goal_position is None and self.ai_mode not in [MODE_MINIMAX]:
                     self.set_new_goal()
                 
                 # Check if reached goal

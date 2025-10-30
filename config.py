@@ -78,7 +78,6 @@ MODE_DFS = 2
 MODE_UCS = 3
 MODE_ASTAR = 4
 MODE_MINIMAX = 5
-MODE_ALPHABETA = 6
 
 # Algorithm names for display
 ALGORITHM_NAMES = {
@@ -87,8 +86,7 @@ ALGORITHM_NAMES = {
     MODE_DFS: "Depth-First Search",
     MODE_UCS: "Uniform Cost Search",
     MODE_ASTAR: "A* Search",
-    MODE_MINIMAX: "Minimax",
-    MODE_ALPHABETA: "Alpha-Beta Pruning"
+    MODE_MINIMAX: "Minimax (Alpha-Beta)"
 }
 
 # Minimax settings
